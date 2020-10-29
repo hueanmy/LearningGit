@@ -1,0 +1,36 @@
+export const TAB_CHART = [{tab: 'Line'}, {tab: 'Bar'}];
+export const NUMBERIC_DATA_TYPES = [
+  'INTEGER',
+  'SHORT',
+  'LONG',
+  'FLOAT',
+  'DOUBLE',
+  'BYTE'
+];
+
+export const LINE_COLORS = [
+  '#f44336',
+  '#43A047',
+  '#FFCA28',
+  '#78B3E1',
+  '#DC7971',
+  '#AD71B7',
+  '#89B2F6',
+  '#e91e63',
+  '#1a237e',
+  '#009688'
+];
+
+export const LINE_CHART_SIZE = {
+  WIDTH: 1366,
+  HEIGHT: 220,
+  MARGIN: {top: 20, right: 250, bottom: 30, left: 50},
+  MIN_Y: 0,
+  MAX_Y: 100,
+  X_LEGEND: 150,
+  Y_LEGEND: 0
+};
+
+export const TIME_FORMAT = {
+  MILLISECONDS: '%Y-%m-%d %H:%M:%S.%L'
+};
