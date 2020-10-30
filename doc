@@ -19,247 +19,488 @@ blue:89B2F6
 https://codepen.io/jackdbd/pen/akQVdW
 
 <template>
-  <div>
-    <div id="line-chart"></div>
+  <div id="app">
+    <img alt="Vue logo" src="./assets/logo.png" />
+
+    <v-btn class="ma-2" color="secondary" @click="addChart">
+      Accept Terms
+    </v-btn>
+    <v-list>
+      <v-list-item-group v-model="selectedItem" color="primary">
+        <v-list-item v-for="(item, i) in listCharts" :key="i">
+          <v-list-item-content>
+            <HelloWorld :data="item.dataset" />
+          </v-list-item-content>
+        </v-list-item>
+      </v-list-item-group>
+    </v-list>
   </div>
 </template>
 
 <script>
-import * as d3 from 'd3';
-import {
-  LINE_COLORS,
-  LINE_CHART_SIZE,
-  TIME_FORMAT
-} from '@/constants/chart/visual-chart-setting.js';
+import HelloWorld from "./components/HelloWorld.vue";
+import * as d3 from 'd3'
 
 export default {
-  name: 'VisualLineChart',
-  props: {
-    data: Array
+  name: "App",
+  components: {
+    HelloWorld,
   },
-
-  mounted() {
-    this.renderChart();
+  methods: {
+    addChart() {
+      this.listCharts.unshift({
+        id: btoa(new Date()).toString(),
+        dataset: this.dataset,
+        chartName: this.chartName,
+      });
+    },
   },
   data() {
     return {
-      width: LINE_CHART_SIZE.WIDTH,
-      height: LINE_CHART_SIZE.HEIGHT,
-      valueLine: []
+      listCharts: [],
+      chartName: "Chart_Name",
+      dataset: [
+        {
+          column1: 9.0,
+          column5: 32.0,
+          column4: 95.0,
+          column3: 78.0,
+          column2: 70.0,
+          time: "2012-06-01 17:00:00.000",
+        },
+        {
+          column1: 47.0,
+          column5: 58.0,
+          column4: 71.0,
+          column3: 58.0,
+          column2: 71.0,
+          time: "2012-06-08 17:00:00.000",
+        },
+        {
+          column1: 61.0,
+          column5: 64.0,
+          column4: 92.0,
+          column3: 62.0,
+          column2: 7.0,
+          time: "2012-06-15 17:00:00.000",
+        },
+        {
+          column1: 86.0,
+          column5: 26.0,
+          column4: 4.0,
+          column3: 65.0,
+          column2: 40.0,
+          time: "2012-06-22 17:00:00.000",
+        },
+        {
+          column1: 32.0,
+          column5: 31.0,
+          column4: 90.0,
+          column3: 98.0,
+          column2: 57.0,
+          time: "2012-06-29 17:00:00.000",
+        },
+        {
+          column1: 3.0,
+          column5: 0.0,
+          column4: 24.0,
+          column3: 38.0,
+          column2: 41.0,
+          time: "2012-07-06 17:00:00.000",
+        },
+        {
+          column1: 17.0,
+          column5: 29.0,
+          column4: 86.0,
+          column3: 30.0,
+          column2: 9.0,
+          time: "2012-07-13 17:00:00.000",
+        },
+        {
+          column1: 50.0,
+          column5: 58.0,
+          column4: 92.0,
+          column3: 70.0,
+          column2: 0.0,
+          time: "2012-07-20 17:00:00.000",
+        },
+        {
+          column1: 90.0,
+          column5: 89.0,
+          column4: 89.0,
+          column3: 80.0,
+          column2: 95.0,
+          time: "2012-07-27 17:00:00.000",
+        },
+        {
+          column1: 55.0,
+          column5: 78.0,
+          column4: 56.0,
+          column3: 60.0,
+          column2: 33.0,
+          time: "2012-08-03 17:00:00.000",
+        },
+        {
+          column1: 0.0,
+          column5: 91.0,
+          column4: 88.0,
+          column3: 96.0,
+          column2: 81.0,
+          time: "2012-08-10 17:00:00.000",
+        },
+        {
+          column1: 25.0,
+          column5: 71.0,
+          column4: 20.0,
+          column3: 59.0,
+          column2: 46.0,
+          time: "2012-08-17 17:00:00.000",
+        },
+        {
+          column1: 31.0,
+          column5: 33.0,
+          column4: 3.0,
+          column3: 30.0,
+          column2: 63.0,
+          time: "2012-08-24 17:00:00.000",
+        },
+        {
+          column1: 58.0,
+          column5: 81.0,
+          column4: 21.0,
+          column3: 34.0,
+          column2: 30.0,
+          time: "2012-08-31 17:00:00.000",
+        },
+        {
+          column1: 16.0,
+          column5: 74.0,
+          column4: 58.0,
+          column3: 64.0,
+          column2: 29.0,
+          time: "2012-09-07 17:00:00.000",
+        },
+        {
+          column1: 32.0,
+          column5: 29.0,
+          column4: 99.0,
+          column3: 42.0,
+          column2: 27.0,
+          time: "2012-09-14 17:00:00.000",
+        },
+        {
+          column1: 21.0,
+          column5: 62.0,
+          column4: 31.0,
+          column3: 85.0,
+          column2: 29.0,
+          time: "2012-09-21 17:00:00.000",
+        },
+        {
+          column1: 76.0,
+          column5: 38.0,
+          column4: 41.0,
+          column3: 63.0,
+          column2: 87.0,
+          time: "2012-09-28 17:00:00.000",
+        },
+        {
+          column1: 71.0,
+          column5: 37.0,
+          column4: 57.0,
+          column3: 4.0,
+          column2: 81.0,
+          time: "2012-10-05 17:00:00.000",
+        },
+        {
+          column1: 80.0,
+          column5: 66.0,
+          column4: 97.0,
+          column3: 70.0,
+          column2: 54.0,
+          time: "2012-10-12 17:00:00.000",
+        },
+        {
+          column1: 81.0,
+          column5: 94.0,
+          column4: 97.0,
+          column3: 76.0,
+          column2: 49.0,
+          time: "2012-10-19 17:00:00.000",
+        },
+        {
+          column1: 40.0,
+          column5: 63.0,
+          column4: 96.0,
+          column3: 54.0,
+          column2: 59.0,
+          time: "2012-10-26 17:00:00.000",
+        },
+        {
+          column1: 85.0,
+          column5: 65.0,
+          column4: 68.0,
+          column3: 35.0,
+          column2: 94.0,
+          time: "2012-11-02 17:00:00.000",
+        },
+        {
+          column1: 15.0,
+          column5: 47.0,
+          column4: 96.0,
+          column3: 16.0,
+          column2: 59.0,
+          time: "2012-11-09 17:00:00.000",
+        },
+        {
+          column1: 40.0,
+          column5: 36.0,
+          column4: 30.0,
+          column3: 22.0,
+          column2: 3.0,
+          time: "2012-11-16 17:00:00.000",
+        },
+        {
+          column1: 24.0,
+          column5: 38.0,
+          column4: 99.0,
+          column3: 50.0,
+          column2: 96.0,
+          time: "2012-11-23 17:00:00.000",
+        },
+        {
+          column1: 58.0,
+          column5: 98.0,
+          column4: 46.0,
+          column3: 71.0,
+          column2: 29.0,
+          time: "2012-11-30 17:00:00.000",
+        },
+        {
+          column1: 26.0,
+          column5: 37.0,
+          column4: 37.0,
+          column3: 92.0,
+          column2: 71.0,
+          time: "2012-12-07 17:00:00.000",
+        },
+        {
+          column1: 17.0,
+          column5: 42.0,
+          column4: 11.0,
+          column3: 13.0,
+          column2: 31.0,
+          time: "2012-12-14 17:00:00.000",
+        },
+        {
+          column1: 60.0,
+          column5: 33.0,
+          column4: 34.0,
+          column3: 80.0,
+          column2: 55.0,
+          time: "2012-12-21 17:00:00.000",
+        },
+        {
+          column1: 86.0,
+          column5: 48.0,
+          column4: 51.0,
+          column3: 52.0,
+          column2: 23.0,
+          time: "2012-12-28 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-01-04 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-01-11 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-01-18 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-01-25 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-02-01 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-02-08 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-02-15 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-02-22 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-03-01 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-03-08 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-03-15 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-03-22 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-03-29 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-04-05 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-04-12 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-04-19 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-04-26 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-05-03 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-05-10 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-05-17 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-05-24 17:00:00.000",
+        },
+        {
+          column1: 41.0,
+          column5: 96.0,
+          column4: 14.0,
+          column3: 16.0,
+          column2: 54.0,
+          time: "2013-05-31 17:00:00.000",
+        },
+      ],
     };
   },
-  methods: {
-    renderChart() {
-      if (document.getElementsByTagName('svg')) {
-        d3.selectAll('svg').remove();
-      }
+  mounted() {
+    const parseDate = d3.timeParse('%Y-%m-%d %H:%M:%S.%L');
+    this.dataset.forEach((d) => {
+      d.time = parseDate(d.time);
+    });
 
-      const data = this.data;
 
-      const margin = LINE_CHART_SIZE.MARGIN;
-      const width = this.width - margin.left - margin.right;
-      const height = this.height - margin.top - margin.bottom;
-
-      // parse the date / time
-      const parseDate = d3.timeParse(TIME_FORMAT.MILLISECONDS);
-
-      // set the ranges
-      const x = d3.scaleTime().range([0, width]);
-      const y = d3.scaleLinear().range([height, 0]);
-
-      const color = d3
-        .scaleOrdinal()
-        .domain(data)
-        .range(LINE_COLORS);
-
-      const xAxis = d3.axisBottom().scale(x);
-
-      const yAxis = d3.axisLeft().scale(y);
-
-      const line = d3
-        .line()
-        .x(function(d) {
-          return x(d.time);
-        })
-        .y(function(d) {
-          return y(d.values);
-        });
-
-      const svg = d3
-        .select('#line-chart')
-        .append('svg')
-        .attr('preserveAspectRatio', 'xMinYMin meet')
-        .attr('viewBox', `0 0 1366 220`)
-        .append('g')
-        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-      color.domain(
-        d3.keys(data[0]).filter(key => {
-          return key !== 'time';
-        })
-      );
-
-      data.forEach(d => {
-        d.time = parseDate(d.time);
-      });
-
-      const timeseries = color.domain().map(name => {
-        return {
-          name: name,
-          values: data.map(d => {
-            return {time: d.time, values: +d[name]};
-          })
-        };
-      });
-
-      const keyColor = timeseries.map(item => item.name);
-
-      x.domain(
-        d3.extent(data, d => {
-          return d.time;
-        })
-      );
-
-      y.domain([
-        d3.min(timeseries, c => {
-          return d3.min(c.values, v => {
-            return v.values;
-          });
-        }),
-        d3.max(timeseries, c => {
-          return d3.max(c.values, v => {
-            return v.values;
-          });
-        })
-      ]);
-
-      svg
-        .append('g')
-        .attr('class', 'x axis')
-        .attr('transform', 'translate(0,' + height + ')')
-        .call(xAxis);
-
-      svg
-        .append('g')
-        .attr('class', 'y axis')
-        .call(yAxis)
-        .append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('class', 'style-unit')
-        .attr('y', -40)
-        .attr('x', -20)
-        .attr('dy', '0')
-        .style('text-anchor', 'middle')
-        .text('values');
-
-      const col = svg
-        .selectAll('.col')
-        .data(timeseries)
-        .enter()
-        .append('g')
-        .attr('class', 'col')
-        .attr('id', d => {
-          return d.name.replace(' ', '');
-        });
-
-      col
-        .append('path')
-        .attr('class', 'line')
-        .attr('d', d => {
-          return line(d.values);
-        })
-        .style('stroke', d => {
-          return color(d.name);
-        });
-
-      col
-        .append('text')
-        .datum(d => {
-          return {name: d.name, value: d.values[d.values.length - 1]};
-        })
-        .attr('transform', d => {
-          return 'translate(' + x(d.value.time) + ',' + y(d.value.values) + ')';
-        })
-        .attr('x', 3)
-        .attr('dy', '.35em')
-        .text(d => {
-          return d.name;
-        })
-        .on('mouseenter', d => {
-          svg
-            .selectAll('#' + d.name.replace(' ', '') + ' path')
-            .style('stroke', '#3e2723');
-        })
-        .on('mouseleave', d => {
-          svg
-            .selectAll('#' + d.name.replace(' ', '') + ' path')
-            .style('stroke', color(d.name));
-        });
-
-      // add the Y gridlines
-      svg
-        .append('g')
-        .attr('class', 'grid')
-        .call(
-          this.make_y_gridlines(y)
-            .tickSize(-width)
-            .tickFormat('')
-        );
-
-      const size = 10;
-      svg
-        .selectAll('mydots')
-        .data(keyColor)
-        .enter()
-        .append('rect')
-        .attr('class', 'position')
-        .attr('x', width + LINE_CHART_SIZE.X_LEGEND)
-        .attr('y', (d, i) => {
-          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5);
-        }) // 100 is where the first dot appears. 25 is the distance between dots
-        .attr('width', size)
-        .attr('height', size)
-        .style('fill', d => {
-          return color(d);
-        });
-
-      // Add the dots for the tooltip
-
-      // Add one dot in the legend for each name.
-      svg
-        .selectAll('mylabels')
-        .data(keyColor)
-        .enter()
-        .append('text')
-        .attr('class', 'position')
-        .attr('x', width + LINE_CHART_SIZE.X_LEGEND + size * 1.5)
-        .attr('y', (d, i) => {
-          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5) + size / 2;
-        }) // 100 is where the first dot appears. 25 is the distance between dots
-        .style('fill', d => {
-          return color(d);
-        })
-        .text(d => {
-          return d;
-        })
-        .attr('text-anchor', 'left')
-        .style('alignment-baseline', 'middle');
-    },
-
-    // gridlines in y axis function
-    make_y_gridlines(y) {
-      return d3.axisLeft(y).ticks(5);
-    }
   },
-
-  watch: {
-    data(val) {
-      if (val) {
-        this.renderChart();
-      }
-    }
-  }
 };
 </script>
 
-<style scoped>
+<style>
+.line {
+  fill: none;
+  stroke-width: 1.5px;
+}
 </style>
