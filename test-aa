@@ -1,0 +1,572 @@
+<template>
+  <v-app class="ml-6 mr-3">
+    <v-card-actions class="pl-0 pt-0 pb-0">
+      <ChartManagementTime></ChartManagementTime>
+      <v-spacer></v-spacer>
+      <v-spacer></v-spacer>
+      <v-btn small @click.stop="drawer = !drawer" color="primary">
+        <v-icon small>mdi-plus</v-icon> {{ $t('button.chart.add-chart') }}
+      </v-btn>
+      <v-btn outlined small>
+        <v-icon @click="refreshData()">mdi-refresh</v-icon>
+      </v-btn>
+    </v-card-actions>
+    <div class="charts">
+      <v-card flat class="list_charts">
+        <v-list>
+          <v-list-item-group v-model="item">
+            <v-list-item
+              @click="clickChart(item)"
+              v-for="item in listChart"
+              :key="item.id"
+            >
+              <v-list-item-content>
+                <v-card flat>
+                  <v-card-actions class="pb-0 pt-0">
+                    <v-subheader>
+                      <v-tooltip bottom>
+                        <template v-slot:activator="{on, attrs}">
+                          <span
+                            v-bind="attrs"
+                            v-on="on"
+                            class="d-inline-block text-truncate"
+                            style="max-width: 150px;"
+                            >{{ item.database }}</span
+                          >
+                        </template>
+                        <span>{{ item.database }}</span>
+                      </v-tooltip>
+                      <v-icon>mdi-chevron-right</v-icon>
+                      <v-tooltip bottom>
+                        <template v-slot:activator="{on, attrs}">
+                          <span
+                            v-bind="attrs"
+                            v-on="on"
+                            class="d-inline-block text-truncate"
+                            style="max-width: 150px;"
+                            >{{ item.container }}</span
+                          >
+                        </template>
+                        <span>{{ item.container }}</span>
+                      </v-tooltip>
+                    </v-subheader>
+                    <v-spacer></v-spacer>
+                    <strong>
+                      {{ item.title }}
+                    </strong>
+                    <v-spacer></v-spacer>
+                    <span class="chart-item-information mr-4">
+                      {{ $t('label.chart.created-at') }}
+                      <span>{{ item.createdDate }}</span>
+                    </span>
+
+                    <v-menu bottom offset-y>
+                      <template v-slot:activator="{on}">
+                        <v-icon v-on="on">mdi-dots-vertical</v-icon>
+                      </template>
+                      <v-list>
+                        <v-list-item @click="editChart(item)">
+                          <v-icon class="mr-2 ml-4">mdi-pencil-outline</v-icon
+                          >{{ $t('button.chart.edit') }}
+                        </v-list-item>
+                        <v-list-item @click="downloadChart(item, 'line')">
+                          <v-icon class="mr-2 ml-4">mdi-download</v-icon
+                          >{{ $t('button.chart.save-as-image') }}
+                        </v-list-item>
+                        <v-list-item @click="deleteChart(item)">
+                          <v-icon class="mr-2 ml-4">mdi-delete</v-icon
+                          >{{ $t('button.chart.delete') }}
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                  </v-card-actions>
+                  <v-card-text class="pt-0 pb-0">
+                    <v-tabs v-model="tab">
+                      <v-tab v-for="item in items" :key="item.tab">
+                        {{ item.tab }}
+                      </v-tab>
+                    </v-tabs>
+                    <v-tabs-items v-model="tab">
+                      <v-tab-item key="chartLineTab">
+                        <VisualLineChart :data="item.dataset"></VisualLineChart>
+                      </v-tab-item>
+                      <v-tab-item>
+                        <VisualBarChart :data="item.dataset"> </VisualBarChart>
+                      </v-tab-item>
+                    </v-tabs-items>
+                  </v-card-text>
+                  <v-card-actions style="height: 30px" class="pb-0 pt-0">
+                    <ChartManagementTime></ChartManagementTime>
+                  </v-card-actions>
+                </v-card>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list-item-group>
+        </v-list>
+      </v-card>
+
+      <!-- Chart management navigation panel -->
+      <v-navigation-drawer
+        class="chart-management-navigation-panel"
+        v-model="drawer"
+        fixed
+        temporary
+        right
+      >
+        <v-list-item class="px-2">
+          <v-list-item-title>
+            <v-card-title class="pl-2">
+              <v-icon color="primary" class="pr-5">mdi-cog</v-icon
+              >{{ $t('label.chart.chart-settings') }}
+            </v-card-title>
+          </v-list-item-title>
+          <v-btn icon @click.stop="drawer = !drawer">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-list-item>
+
+        <v-divider></v-divider>
+        <v-card flat>
+          <v-row>
+            <div class="navigation-panel-item">
+              <span class="item-label"> {{ $t('label.chart.databases') }}</span>
+              <v-autocomplete
+                class="item-selecrrrt-box"
+                v-model="selectedDatabase"
+                auto-select-first
+                :items="databaseList"
+              >
+                <template v-slot:item="{item}">
+                  <span :selected="item.selected" class="custom-dropdown-chart">
+                    <v-tooltip bottom>
+                      <template v-slot:activator="{on, attrs}">
+                        <span v-bind="attrs" v-on="on">{{ item }}</span>
+                      </template>
+                      <span>{{ item }}</span>
+                    </v-tooltip>
+                  </span>
+                </template>
+              </v-autocomplete>
+            </div>
+          </v-row>
+          <v-row>
+            <div class="navigation-panel-item">
+              <span class="item-label">{{ $t('label.chart.containers') }}</span>
+              <v-autocomplete
+                class="item-select-box custom-list"
+                v-model="selectedContainer"
+                :items="containerList"
+              >
+                <template v-slot:item="{item}">
+                  <span :selected="item.selected" class="custom-dropdown-chart">
+                    <v-tooltip bottom>
+                      <template v-slot:activator="{on, attrs}">
+                        <span v-bind="attrs" v-on="on">{{ item }}</span>
+                      </template>
+                      <span>{{ item }}</span>
+                    </v-tooltip>
+                  </span>
+                </template>
+              </v-autocomplete>
+            </div>
+          </v-row>
+          <DataTable
+            v-model="selectedColumn"
+            :headers="columnOfContainerHeader"
+            :rowList="listColumns"
+            :isSingleSelect="false"
+            :isShowSelect="true"
+            class="column-table-chart-management"
+            itemKey="name"
+            name="column"
+          ></DataTable>
+          <v-btn
+            class="navigation-panel-add-chart-button"
+            @click="addChart()"
+            color="primary"
+            :disabled="isDisabledAddChart"
+            small
+          >
+            {{ $t('button.chart.add-chart') }}
+          </v-btn>
+        </v-card>
+      </v-navigation-drawer>
+    </div>
+  </v-app>
+</template>
+
+<script>
+import axios from 'axios';
+import * as d3 from 'd3'
+import {
+  DATABASE_LIST_API,
+  CONTAINER_LIST_API,
+  CONTAINER_INFORMATION_API,
+  SELF_HANDLE_API_PARAM,
+  ROW_TIMESERIES_API
+} from '@/constants/common/api-path';
+import {REQUEST_CHART_SEARCH_CONTAINER} from '@/constants/common/request-body';
+import {ROW_COUNT_DEFAULT_DATABASE} from '@/constants/cluster/cluster.js';
+import {COLUMN_CHART_SETTING} from '@/constants/chart/table-header';
+import {
+  TAB_CHART,
+  NUMBERIC_DATA_TYPES
+} from '@/constants/chart/visual-chart-setting.js';
+import DataTable from '@/components/common/DataTable';
+import ChartManagementTime from '@/components/chart/ChartManagementTime.vue';
+import VisualLineChart from '@/components/chart/VisualLineChart.vue';
+import VisualBarChart from '@/components/chart/VisualBarChart.vue';
+import {LIST_CLUSTER_STATUS_NOT_RUNNING} from '@/constants/cluster/cluster-status';
+import {ERROR_KEY_CLUSTER_NOT_RUNNING} from '@/constants/common/error-key';
+import {ERROR_CODE_DATABASE_NOT_FOUND} from '@/constants/common/error-code';
+import {TIME_FORMAT} from '@/constants/chart/visual-chart-setting.js';
+export default {
+  name: 'chart-management',
+  components: {
+    ChartManagementTime,
+    VisualLineChart,
+    VisualBarChart,
+    DataTable
+  },
+  data() {
+    return {
+      drawer: false,
+      item: '',
+      databaseList: [],
+      columnOfContainerHeader: COLUMN_CHART_SETTING,
+      selectedDatabase: ROW_COUNT_DEFAULT_DATABASE,
+      containerList: [],
+      selectedContainer: '',
+      selectedColumn: [],
+      listColumns: [],
+      tab: null,
+      items: TAB_CHART,
+      chartItem: '',
+      chartCreatedAt: '',
+      chartName: 'Chart_Name',
+      listChart: [],
+      dummyCount: 0,
+      numbericalTypes: NUMBERIC_DATA_TYPES,
+      startTime: '2012-06-01 17:00:00.000+0700',
+      endTime: '2013-06-01 17:00:10.000+0700',
+      dataset: [],
+      isApplyAll: false,
+      isEdit: false
+    };
+  },
+
+  created() {
+    const isSuccess = this.$store.getters.clusterName;
+    if (!isSuccess) {
+      return;
+    }
+    if (
+      LIST_CLUSTER_STATUS_NOT_RUNNING.includes(
+        this.$store.getters.clusterStatus
+      )
+    ) {
+      this.showErrorDialog({
+        message: this.$i18n.t(ERROR_KEY_CLUSTER_NOT_RUNNING)
+      });
+      return;
+    }
+    this.listCharts = localStorage.getItem('storeChart');
+  },
+
+  computed: {
+    isDisabledAddChart() {
+      if (
+        this.selectedDatabase &&
+        this.selectedContainer &&
+        this.selectedColumn.length > 0
+      ) {
+        return false;
+      }
+      return true;
+    }
+  },
+
+  methods: {
+    refreshData() {
+      this.selectedDatabase = ROW_COUNT_DEFAULT_DATABASE;
+      this.listColumns = [];
+    },
+
+    addChart() {
+      // TODO: Send request
+      this.drawer = false;
+      this.getRowData(this.selectedColumn, this.startTime, this.endTime);
+      // const dataset2 = JSON.parse(JSON.stringify(this.dataset))
+      this.listChart.unshift({
+        id: btoa(Date.now()),
+        database: this.selectedDatabase,
+        container: this.selectedContainer,
+        columns: this.listColumns,
+        title: this.chartName,
+        startTime: this.startTime,
+        endTime: this.endTime,
+        dataset: this.dataset,
+        createdDate: new Date().toLocaleString(),
+        isApplyAll: this.isApplyAll
+      });
+      /* Store chart to local storage*/
+      localStorage.setItem('storeChart', JSON.stringify(this.listChart));
+    },
+
+    editChart(item) {
+      this.isEdit = true;
+      this.drawer = true;
+      this.selectedDatabase = item.database;
+      this.selectedContainer = item.container;
+      this.selectedColumn = item.columns;
+    },
+
+    deleteChart(item) {
+      this.listChart = this.listChart.filter(con => con.id != item.id);
+      localStorage.setItem('storeChart', JSON.stringify(this.listChart));
+    },
+
+    async getDatabaseList() {
+      this.databaseList = [];
+      await axios
+        .get(
+          this.formatStringEncode(
+            DATABASE_LIST_API,
+            this.$store.getters.clusterName,
+            false
+          )
+        )
+        .then(res => {
+          if (res && res.data) {
+            this.databaseList = res.data.map(database => database.name);
+          }
+        });
+    },
+    getContainerList() {
+      this.containerList = [];
+      this.selectedContainer = '';
+      this.selectedColumn = [];
+      const containerSearchApi = this.formatStringEncode(
+        CONTAINER_LIST_API,
+        this.$store.getters.clusterName,
+        this.selectedDatabase
+      );
+      axios
+        .post(
+          this.appendUrlParam(containerSearchApi, SELF_HANDLE_API_PARAM),
+          JSON.stringify(REQUEST_CHART_SEARCH_CONTAINER)
+        )
+        .then(
+          res => {
+            const filterContainerPartition = res.data.containers.filter(
+              container => container.partitionType == 'null'
+            );
+            this.containerList = filterContainerPartition.map(
+              container => container.name
+            );
+          },
+          error => {
+            this.handleSearchError(error);
+          }
+        );
+    },
+
+    /* Get container column */
+    getContainerValues() {
+      this.listColumns = [];
+      this.selectedColumn = [];
+      if (this.selectedContainer) {
+        this.listColumns = [];
+        const containerSearchApi = this.formatStringEncode(
+          CONTAINER_INFORMATION_API,
+          this.$store.getters.clusterName,
+          this.selectedDatabase,
+          this.selectedContainer
+        );
+        axios
+          .get(this.appendUrlParam(containerSearchApi, SELF_HANDLE_API_PARAM))
+          .then(
+            res => {
+              const colNumbericalTypes = res.data.columns.filter(input =>
+                this.numbericalTypes.includes(input.type)
+              );
+              this.listColumns = colNumbericalTypes;
+            },
+            error => {
+              this.handleSearchError(error);
+            }
+          );
+      }
+    },
+
+    /* Get timeseries row data */
+
+    getRowData(selectedColumnName, startDate, endDate) {
+      selectedColumnName = this.selectedColumn.map(column => column.name);
+      const rowTimeSeriesApi = this.formatStringEncode(
+        ROW_TIMESERIES_API,
+        this.$store.getters.clusterName,
+        this.selectedDatabase,
+        this.selectedContainer
+      );
+
+      const requestBody = {
+        startDate: startDate,
+        endDate: endDate,
+        columns: selectedColumnName
+      };
+
+      axios
+        .post(
+          this.appendUrlParam(rowTimeSeriesApi, SELF_HANDLE_API_PARAM),
+          JSON.stringify(requestBody)
+        )
+        .then(res => {
+          const parseDate = d3.timeParse(TIME_FORMAT.MILLISECONDS);
+
+          res.data.forEach(d => {
+            d.time = parseDate(d.time);
+          });
+
+          this.dataset = res.data;
+        });
+    },
+
+    handleSearchError(error) {
+      if (!error || !error.response || !error.response.data) {
+        this.showErrorDialog({
+          message: this.$i18n.t('common.error.unknown'),
+          onCloseCallback: this.clearListDatabaseContainer
+        });
+        return;
+      }
+      const errorCode = error.response.data.errorCode;
+      if (!errorCode) {
+        this.showErrorDialog({
+          message: this.$i18n.t('common.error.unknown')
+        });
+      } else if (errorCode === ERROR_CODE_DATABASE_NOT_FOUND) {
+        const fields = error.response.data.fields;
+        if (fields && fields.length > 0) {
+          this.showErrorDialog({
+            message: this.$i18n.t(
+              'api-response.common.' + errorCode,
+              fields.map(field => field.field)
+            ),
+            onCloseCallback: this.resetSelectedDatabase
+          });
+        }
+      } else {
+        this.showErrorDialog({
+          message: this.$i18n.t('api-response.common.' + errorCode)
+        });
+      }
+    },
+
+    resetSelectedDatabase() {
+      this.selectedDatabase = ROW_COUNT_DEFAULT_DATABASE;
+    },
+
+    clearListDatabaseContainer() {
+      this.containerList = [];
+    },
+
+    clickChart(item) {
+      this.chartItem = item;
+    }
+  },
+
+  watch: {
+    async drawer(isExpand) {
+      if (isExpand && !this.isEdit) {
+        const storeSelectedContainer = this.selectedContainer;
+        await this.getDatabaseList();
+        if (this.selectedDatabase != null) {
+          this.getContainerList();
+          this.selectedContainer = storeSelectedContainer;
+        }
+      } else {
+        this.databaseList = [];
+      }
+    },
+    selectedDatabase(value) {
+      if (value) {
+        this.getContainerList();
+      }
+    },
+    selectedContainer(value) {
+      if (value) {
+        this.getContainerValues();
+      }
+    },
+    selectedColumn(value) {
+      if (value) {
+        this.getRowData(value, this.startTime, this.endTime);
+      }
+    }
+  }
+};
+</script>
+
+<style scoped>
+.chart-item-information {
+  color: black;
+}
+.chart-management-navigation-panel {
+  height: 100%;
+  width: 425px !important;
+}
+.navigation-panel-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  margin: 0px 30px 0px 30px;
+}
+.item-label {
+  font-weight: bold;
+  flex-basis: 100px;
+  min-width: 100px;
+  color: rgba(0, 0, 0, 0.87);
+}
+.item-select-box {
+  flex: 1 1 auto;
+}
+
+.column-table-chart-management {
+  margin: -20px 20px 0px 20px;
+}
+
+.navigation-panel-add-chart-button {
+  margin: 20px 20px 10px 0px;
+  float: right;
+}
+
+.custom-dropdown-chart {
+  max-width: 230px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.custom-list {
+  width: 275px;
+}
+
+.list_charts {
+  height: calc(100vh - 120px);
+  overflow-y: scroll;
+}
+
+html {
+  overflow-x: hidden;
+}
+::-webkit-scrollbar {
+  width: 0px; /* Remove scrollbar space */
+  background: transparent; /* Optional: just make scrollbar invisible */
+}
+/* Optional: show position indicator in red */
+::-webkit-scrollbar-thumb {
+  background: #ff0000;
+}
+</style>
