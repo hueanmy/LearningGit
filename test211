@@ -1,0 +1,306 @@
+<template>
+  <div>
+    <div id="line-chart"></div>
+  </div>
+</template>
+
+<script>
+import * as d3 from 'd3';
+import {LINE_CHART_SIZE} from '@/constants/chart/visual-chart-setting.js';
+
+export default {
+  name: 'VisualLineChart',
+  props: {
+    data: Array
+  },
+
+  mounted() {
+    this.renderChart();
+  },
+  data() {
+    return {
+      width: LINE_CHART_SIZE.WIDTH,
+      height: LINE_CHART_SIZE.HEIGHT,
+      valueLine: []
+    };
+  },
+  methods: {
+    renderChart() {
+      const data = this.data;
+
+      const margin = LINE_CHART_SIZE.MARGIN;
+      const width = this.width - margin.left - margin.right;
+      const height = this.height - margin.top - margin.bottom;
+
+      // set the ranges
+      const x = d3.scaleTime().range([0, width]);
+      const y = d3.scaleLinear().range([height, 0]);
+
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+      const xAxis = d3.axisBottom().scale(x);
+
+      const yAxis = d3.axisLeft().scale(y);
+
+      const line = d3
+        .line()
+        .x(function(d) {
+          return x(d.time);
+        })
+        .y(function(d) {
+          return y(d.values);
+        });
+
+      const svg = d3
+        .select('#line-chart')
+        .append('svg')
+        .attr('preserveAspectRatio', 'xMinYMin meet')
+        .attr('viewBox', `0 0 1450 220`)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+      color.domain(
+        d3.keys(data[0]).filter(key => {
+          return key !== 'time';
+        })
+      );
+
+      const timeseries = color.domain().map(name => {
+        return {
+          name: name,
+          values: data.map(d => {
+            return {time: d.time, values: +d[name]};
+          })
+        };
+      });
+
+      const keyColor = timeseries.map(item => item.name);
+
+      x.domain(
+        d3.extent(data, d => {
+          return d.time;
+        })
+      );
+
+      y.domain([
+        d3.min(timeseries, c => {
+          return d3.min(c.values, v => {
+            return v.values;
+          });
+        }),
+        d3.max(timeseries, c => {
+          return d3.max(c.values, v => {
+            return v.values;
+          });
+        })
+      ]);
+
+      svg
+        .append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + height + ')')
+        .call(xAxis);
+
+      svg
+        .append('g')
+        .attr('class', 'y axis')
+        .call(yAxis)
+        .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('class', 'style-unit')
+        .attr('y', -40)
+        .attr('x', -20)
+        .attr('dy', '0')
+        .style('text-anchor', 'middle')
+        .text('values');
+
+      const col = svg
+        .selectAll('.col')
+        .data(timeseries)
+        .enter()
+        .append('g')
+        .attr('class', 'col')
+        .attr('id', d => {
+          return d.name.replace(' ', '');
+        });
+
+      col
+        .append('path')
+        .attr('class', 'line')
+        .attr('d', d => {
+          return line(d.values);
+        })
+        .style('stroke', d => {
+          return color(d.name);
+        });
+
+      col
+        .append('text')
+        .datum(d => {
+          return {name: d.name, value: d.values[d.values.length - 1]};
+        })
+        .attr('transform', d => {
+          return 'translate(' + x(d.value.time) + ',' + y(d.value.values) + ')';
+        })
+        .attr('x', 3)
+        .attr('dy', '.35em')
+        .text(d => {
+          return d.name;
+        })
+        .on('mouseenter', d => {
+          svg
+            .selectAll('#' + d.name.replace(' ', '') + ' path')
+            .style('stroke-width', '0.18rem');
+        })
+        .on('mouseleave', d => {
+          svg
+            .selectAll('#' + d.name.replace(' ', '') + ' path')
+            .style('stroke-width', '0.1rem');
+        });
+
+      // add the Y gridlines
+      svg
+        .append('g')
+        .attr('class', 'grid')
+        .call(
+          this.make_y_gridlines(y)
+            .tickSize(-width)
+            .tickFormat('')
+        );
+
+      // Create legend
+      const size = 10;
+      svg
+        .selectAll('mydots')
+        .data(keyColor)
+        .enter()
+        .append('rect')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND)
+        .attr('y', (d, i) => {
+          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5);
+        }) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr('width', size)
+        .attr('height', size)
+        .style('fill', d => {
+          return color(d);
+        });
+
+      // Add one dot in the legend for each name.
+      svg
+        .selectAll('mylabels')
+        .data(keyColor)
+        .enter()
+        .append('text')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND + size * 1.5)
+        .attr('y', (d, i) => {
+          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5) + size / 2;
+        }) // 100 is where the first dot appears. 25 is the distance between dots
+        .style('fill', d => {
+          return color(d);
+        })
+        .text(d => {
+          return d;
+        })
+        .attr('text-anchor', 'left')
+        .style('alignment-baseline', 'middle');
+
+      const focus = svg
+        .append('g')
+        .attr('class', 'focus')
+        .style('display', 'none');
+
+      focus.append('circle').attr('r', 5);
+
+      focus
+        .append('rect')
+        .attr('class', 'tooltip')
+        .attr('width', 300)
+        .attr('height', 150)
+        .attr('x', 10)
+        .attr('y', -22)
+        .attr('rx', 4)
+        .attr('ry', 4);
+
+      focus
+        .append('text')
+        .attr('class', 'tooltip-date')
+        .attr('x', 18)
+        .attr('y', -10);
+
+      focus
+        .append('text')
+        .attr('class', 'tooltip-column1')
+        .attr('x', 18)
+        .attr('y', -2);
+
+      focus
+        .append('text')
+        .attr('class', 'tooltip-column2')
+        .attr('x', 18)
+        .attr('y', -10);
+      focus
+        .append('text')
+        .attr('x', 18)
+        .attr('y', 18)
+        .text('data here');
+
+      focus
+        .append('text')
+        .attr('class', 'tooltip-likes')
+        .attr('x', 60)
+        .attr('y', 18);
+
+      svg
+        .append('rect')
+        .attr('class', 'overlay')
+        .attr('width', width)
+        .attr('height', height)
+        .on('mouseover', function() {
+          focus.style('display', null);
+        })
+        .on('mouseout', function() {
+          focus.style('display', 'none');
+        })
+        .on('mousemove', mousemove);
+
+
+      function mousemove() {
+        const x0 = x.invert(d3.event.x);
+        console.log(d3.event.x);
+        const bisectDate = d3.bisector(function(d) {
+          return d.time;
+        }).left;
+        const i = bisectDate(data, x0, 1);
+        const d0 = data[i - 19];
+        const d1 = data[i - 19];
+        const d = x0 - d0.time > d1.time - x0 ? d1 : d0;
+        console.log(d);
+        focus.attr(
+          'transform',
+          'translate(' + x(d.time) + ',' + y(d.column1) + ')'
+        );
+        const formatValue = d3.format(',');
+        focus.select('.tooltip-date').text(d.time);
+        focus.select('.tooltip-column1').text(formatValue(d.column1));
+        focus.select('.tooltip-column2').text(formatValue(d.column2));
+      }
+    },
+
+    // gridlines in y axis function
+    make_y_gridlines(y) {
+      return d3.axisLeft(y).ticks(5);
+    }
+  },
+
+  watch: {
+    data(val) {
+      if (val) {
+        this.renderChart();
+      }
+    }
+  }
+};
+</script>
+
+<style scoped></style>
