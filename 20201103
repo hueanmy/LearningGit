@@ -3,14 +3,17 @@
 </template>
 
 <script>
-import * as d3 from "d3";
-import { LINE_CHART_SIZE, TIME_FORMAT } from "./visual-chart-setting.js";
+import * as d3 from 'd3';
+import {
+  LINE_CHART_SIZE,
+  TIME_FORMAT
+} from './visual-chart-setting.js';
 
 export default {
-  name: "VisualLineChart",
+  name: 'VisualLineChart',
   props: {
     data: Array,
-    chartId: String,
+    chartId: String
   },
 
   mounted() {
@@ -21,14 +24,15 @@ export default {
       width: LINE_CHART_SIZE.WIDTH,
       height: LINE_CHART_SIZE.HEIGHT,
       valueLine: [],
-      myId: "",
+      myId: ''
     };
   },
 
-  created() {
-    this.myId = "line-chart" + this.chartId;
+  created(){
+    this.myId = 'line-chart' + this.chartId
   },
   methods: {
+    
     renderChart() {
       const data = this.data;
       const timeDataDisplay = this.collectTime(data);
@@ -58,243 +62,219 @@ export default {
         .y(function(d) {
           return y(d.values);
         });
-      console.log(this.myId);
+        console.log(this.myId);
       const svg = d3
-        .select("#" + this.myId)
-        .append("svg")
-        .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", `0 0 1450 220`)
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .select('#' + this.myId)
+        .append('svg')
+        .attr('preserveAspectRatio', 'xMinYMin meet')
+        .attr('viewBox', `0 0 1450 220`)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
       color.domain(
-        d3.keys(data[0]).filter((key) => {
-          return key !== "time";
+        d3.keys(data[0]).filter(key => {
+          return key !== 'time';
         })
       );
 
-      const timeseries = color.domain().map((name) => {
+      const timeseries = color.domain().map(name => {
         return {
           name: name,
-          values: data.map((d) => {
-            return { time: d.time, values: +d[name] };
-          }),
+          values: data.map(d => {
+            return {time: d.time, values: +d[name]};
+          })
         };
       });
 
-      const keyColor = timeseries.map((item) => item.name);
+      const keyColor = timeseries.map(item => item.name);
 
       x.domain(
-        d3.extent(data, (d) => {
+        d3.extent(data, d => {
           return d.time;
         })
       );
 
       y.domain([
-        d3.min(timeseries, (c) => {
-          return d3.min(c.values, (v) => {
+        d3.min(timeseries, c => {
+          return d3.min(c.values, v => {
             return v.values;
           });
         }),
-        d3.max(timeseries, (c) => {
-          return d3.max(c.values, (v) => {
+        d3.max(timeseries, c => {
+          return d3.max(c.values, v => {
             return v.values;
           });
-        }),
+        })
       ]);
 
       svg
-        .append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
+        .append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + height + ')')
         .call(xAxis);
 
       svg
-        .append("g")
-        .attr("class", "y axis")
+        .append('g')
+        .attr('class', 'y axis')
         .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("class", "style-unit")
-        .attr("y", -40)
-        .attr("x", -20)
-        .attr("dy", "0")
-        .style("text-anchor", "middle")
-        .text("values");
+        .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('class', 'style-unit')
+        .attr('y', -40)
+        .attr('x', -20)
+        .attr('dy', '0')
+        .style('text-anchor', 'middle')
+        .text('values');
 
       const col = svg
-        .selectAll(".col")
+        .selectAll('.col')
         .data(timeseries)
         .enter()
-        .append("g")
-        .attr("class", "col")
-        .attr("id", (d) => {
-          return d.name.replace(" ", "");
+        .append('g')
+        .attr('class', 'col')
+        .attr('id', d => {
+          return d.name.replace(' ', '');
         });
 
       col
-        .append("path")
-        .attr("class", "line")
-        .attr("d", (d) => {
+        .append('path')
+        .attr('class', 'line')
+        .attr('d', d => {
           return line(d.values);
         })
-        .style("stroke", (d) => {
+        .style('stroke', d => {
           return color(d.name);
         });
 
       col
-        .append("text")
-        .datum((d) => {
-          return { name: d.name, value: d.values[d.values.length - 1] };
+        .append('text')
+        .datum(d => {
+          return {name: d.name, value: d.values[d.values.length - 1]};
         })
-        .attr("transform", (d) => {
-          return "translate(" + x(d.value.time) + "," + y(d.value.values) + ")";
+        .attr('transform', d => {
+          return 'translate(' + x(d.value.time) + ',' + y(d.value.values) + ')';
         })
-        .attr("x", 3)
-        .attr("dy", ".35em")
-        .text((d) => {
+        .attr('x', 3)
+        .attr('dy', '.35em')
+        .text(d => {
           return d.name;
         })
-        .on("mouseenter", (d) => {
+        .on('mouseenter', d => {
           svg
-            .selectAll("#" + d.name.replace(" ", "") + " path")
-            .style("stroke-width", "0.18rem");
+            .selectAll('#' + d.name.replace(' ', '') + ' path')
+            .style('stroke-width', '0.18rem');
         })
-        .on("mouseleave", (d) => {
+        .on('mouseleave', d => {
           svg
-            .selectAll("#" + d.name.replace(" ", "") + " path")
-            .style("stroke-width", "0.1rem");
+            .selectAll('#' + d.name.replace(' ', '') + ' path')
+            .style('stroke-width', '0.1rem');
         });
 
       // add the Y gridlines
       svg
-        .append("g")
-        .attr("class", "grid")
+        .append('g')
+        .attr('class', 'grid')
         .call(
           this.make_y_gridlines(y)
             .tickSize(-width)
-            .tickFormat("")
+            .tickFormat('')
         );
 
       const size = LINE_CHART_SIZE.LEGEND_RECT;
       svg
-        .selectAll("mydots")
+        .selectAll('mydots')
         .data(keyColor)
         .enter()
-        .append("rect")
-        .attr("class", "position")
-        .attr("x", width + LINE_CHART_SIZE.X_LEGEND)
-        .attr("y", (d, i) => {
+        .append('rect')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND)
+        .attr('y', (d, i) => {
           return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5);
         }) // 100 is where the first dot appears. 25 is the distance between dots
-        .attr("width", size)
-        .attr("height", size)
-        .style("fill", (d) => {
+        .attr('width', size)
+        .attr('height', size)
+        .style('fill', d => {
           return color(d);
         });
 
       // Add one dot in the legend for each name.
       svg
-        .selectAll("mylabels")
+        .selectAll('mylabels')
         .data(keyColor)
         .enter()
-        .append("text")
-        .attr("class", "position")
-        .attr("x", width + LINE_CHART_SIZE.X_LEGEND + size * 1.5)
-        .attr("y", (d, i) => {
+        .append('text')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND + size * 1.5)
+        .attr('y', (d, i) => {
           return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5) + size / 2;
         }) // 100 is where the first dot appears. 25 is the distance between dots
-        .style("fill", (d) => {
+        .style('fill', d => {
           return color(d);
         })
-        .text((d) => {
+        .text(d => {
           return d;
         })
-        .attr("text-anchor", "left")
-        .style("alignment-baseline", "middle");
+        .attr('text-anchor', 'left')
+        .style('alignment-baseline', 'middle');
 
       // Add Mouse Over
 
-      const mouseG = svg.append("g").attr("class", "mouse-over-effects");
+      const mouseG = svg.append('g').attr('class', 'mouse-over-effects');
 
       mouseG
-        .append("path") // this is the black vertical line to follow mouse
-        .attr("class", "mouse-line")
-        .style("stroke", "rgb(199, 195, 195)")
-        .style("stroke-width", "0.5px")
-        .style("opacity", "0");
+        .append('path') // this is the black vertical line to follow mouse
+        .attr('class', 'mouse-line')
+        .style('stroke', 'rgb(199, 195, 195)')
+        .style('stroke-width', '0.5px')
+        .style('opacity', '0');
 
       const interpolateCursor = true;
 
       mouseG
-        .append("svg:rect") // append a rect to catch mouse movements on canvas
-        .attr("width", width) // can't catch mouse events on a g element
-        .attr("height", height)
-        .attr("fill", "none")
-        .attr("pointer-events", "all")
-        .on("mouseout", () => {
+        .append('svg:rect') // append a rect to catch mouse movements on canvas
+        .attr('width', width) // can't catch mouse events on a g element
+        .attr('height', height)
+        .attr('fill', 'none')
+        .attr('pointer-events', 'all')
+        .on('mouseout', () => {
           // on mouse out hide line, circles and text
-          d3.select("#" + this.myId + " .mouse-line").style("opacity", "0");
-          d3.selectAll("#" + this.myId + " .mouse-per-line circle").style(
-            "opacity",
-            "0"
-          );
-          d3.selectAll("#" + this.myId + " .mouse-per-line text").style(
-            "opacity",
-            "0"
-          );
-          d3.selectAll("#" + this.myId + " .tooltip-component").style(
-            "visibility",
-            "hidden"
-          );
+          d3.select('#' + this.myId + ' .mouse-line').style('opacity', '0');
+          d3.selectAll('#' + this.myId + ' .mouse-per-line circle').style('opacity', '0');
+          d3.selectAll('#' + this.myId + ' .mouse-per-line text').style('opacity', '0');
+          d3.selectAll('#' + this.myId + ' .tooltip-component').style('visibility', 'hidden');
         })
-        .on("mouseover", () => {
+        .on('mouseover', () => {
           // on mouse in show line, circles and text
-          d3.select("#" + this.myId + " .mouse-line").style("opacity", "1");
-          d3.selectAll("#" + this.myId + " .mouse-per-line circle").style(
-            "opacity",
-            "1"
-          );
-          d3.selectAll("#" + this.myId + " .mouse-per-line text").style(
-            "opacity",
-            "1"
-          );
-          d3.selectAll("#" + this.myId + " .tooltip-component").style(
-            "visibility",
-            "visible"
-          );
+          d3.select('#' + this.myId + ' .mouse-line').style('opacity', '1');
+          d3.selectAll('#' + this.myId + ' .mouse-per-line circle').style('opacity', '1');
+          d3.selectAll('#' + this.myId + ' .mouse-per-line text').style('opacity', '1');
+          d3.selectAll('#' + this.myId + ' .tooltip-component').style('visibility', 'visible');
         })
-        .on("mousemove", () => {
+        .on('mousemove', () => {
           // mouse moving over canvas
-          d3.select(".mouse-line").attr("d", function() {
-            console.log(d3.select("rect"));
-            const cursorX = d3.event.pageX;
-            let d = "M" + cursorX + "," + height;
-            d += " " + cursorX + "," + 0;
+          d3.select('.mouse-line').attr('d', function() {
+            console.log(d3.mouse(svg.node())[0], 'mmmmm');
+            const cursorX = d3.mouse(svg.node())[0];
+            let d = 'M' + cursorX + ',' + height;
+            d += ' ' + cursorX + ',' + 0;
             return d;
           });
         });
 
       const cursorToTooltipOffset = 6;
       const updateTooltipContents = (tooltip, tooltipValues) => {
-        if (!tooltipValues) return tooltip.style("display", "none");
+        if (!tooltipValues) return tooltip.style('display', 'none');
 
         const rows = tooltip
-          .selectAll(".tooltip-row")
-          .data(tooltipValues, (d) => d.value + d.color);
-
-        // select mot phan tu time row
-        // kiem tra xem phan tu do co ton tai khong
-
-        // neu khong ton tai thi add mot phan tu moi
-
-        // neu da ton tai thi doi text cua phan tu do
+          .selectAll('.tooltip-row')
+          .data(tooltipValues, d => d.value + d.color);
 
         const row = rows
           .enter()
-          .append("g")
-          .attr("class", "tooltip-row")
-          .attr("transform", (d, i) => `translate(5, ${i * 20 + 5})`);
+          .append('g')
+          .attr('class', 'tooltip-row')
+          .attr('transform', (d, i) => `translate(5, ${i * 20 + 5})`);
         rows.exit().remove();
+
 
         // row
         //   .append('text')
@@ -305,66 +285,63 @@ export default {
 
         const colorSquareSize = LINE_CHART_SIZE.COLOR_SQUARE_SIZE;
         row
-          .append("rect")
-          .attr("height", colorSquareSize)
-          .attr("width", colorSquareSize)
-          .attr("fill", (d) => d.color);
+          .append('rect')
+          .attr('height', colorSquareSize)
+          .attr('width', colorSquareSize)
+          .attr('fill', d => d.color);
 
         const textMargin = LINE_CHART_SIZE.TEXT_MARGIN;
         row
-          .append("text")
-          .attr("transform", `translate(${colorSquareSize + textMargin}, 0)`)
-          .attr("dominant-baseline", "hanging")
-          .attr("text-rendering", "optimizeLegibility")
-          .attr("stroke", "none")
-          .attr("fill", "white")
-          .attr("font-size", "16")
-          .append("tspan")
-          .attr("fill", "white")
-          .text((d) => d.value);
+          .append('text')
+          .attr('transform', `translate(${colorSquareSize + textMargin}, 0)`)
+          .attr('dominant-baseline', 'hanging')
+          .attr('text-rendering', 'optimizeLegibility')
+          .attr('stroke', 'none')
+          .attr('fill', 'white')
+          .attr('font-size', '16')
+          .append('tspan')
+          .attr('fill', 'white')
+          .text(d => d.value);
 
         const markers = mouseG
-          .selectAll("#" + this.myId + " .cursor-data-marker")
-          .data(
-            tooltipValues,
-            (d) => d.value + (d.color ? d.color : "#FFFFFFFF")
-          );
+          .selectAll('#' + this.myId + ' .cursor-data-marker')
+          .data(tooltipValues, d => d.value + d.color);
         markers.exit().remove();
         markers
           .enter()
-          .append("circle")
-          .attr("class", "cursor-data-marker tooltip-component")
-          .attr("pointer-events", "none")
-          .attr("r", 3)
-          .attr("cx", (d) => {
+          .append('circle')
+          .attr('class', 'cursor-data-marker tooltip-component')
+          .attr('pointer-events', 'none')
+          .attr('r', 3)
+          .attr('cx', d => {
             return x(d.time);
           })
-          .attr("cy", (d) => {
+          .attr('cy', (d) => {
             return y(d.value);
           })
-          .attr("fill", (d) => d.color);
+          .attr('fill', d => d.color);
       };
 
-      const plotArea = d3.select("#" + this.myId + " .mouse-over-effects");
+      const plotArea = d3.select('#' + this.myId + ' .mouse-over-effects');
       const tooltip = svg
-        .append("g")
-        .attr("class", "tooltip tooltip-component");
+        .append('g')
+        .attr('class', 'tooltip tooltip-component');
 
       tooltip
-        .append("rect")
-        .attr("class", "tooltip-component")
-        .attr("pointer-events", "none")
-        .attr("height", LINE_CHART_SIZE.TOOLTIP_RECT_HEIGHT)
-        .attr("width", LINE_CHART_SIZE.TOOLTIP_RECT_WIDTH)
-        .attr("visibility", "hidden")
-        .attr("opacity", LINE_CHART_SIZE.TOOLTIP_RECT_OPACITY)
-        .attr("stroke", "black");
-      const bs = d3.bisector((d) => {
+        .append('rect')
+        .attr('class', 'tooltip-component')
+        .attr('pointer-events', 'none')
+        .attr('height', LINE_CHART_SIZE.TOOLTIP_RECT_HEIGHT)
+        .attr('width', LINE_CHART_SIZE.TOOLTIP_RECT_WIDTH)
+        .attr('visibility', 'hidden')
+        .attr('opacity', LINE_CHART_SIZE.TOOLTIP_RECT_OPACITY)
+        .attr('stroke', 'black');
+      const bs = d3.bisector(d => {
         return d.time;
       });
       const bisectDate = bs.left;
-      svg.on("mousemove", () => {
-        const x0 = x.invert(d3.event.layerX);
+      svg.on('mousemove', () => {
+        const x0 = x.invert( d3.mouse(svg.node())[0]);
         const i = bisectDate(data, x0, 1);
         const d0 = data[i - 1];
         const d1 = data[i];
@@ -378,18 +355,18 @@ export default {
           row = data[i - 1];
         }
         let keys = [];
-        Object.keys(row).forEach((prop) => {
+        Object.keys(row).forEach(prop => {
           keys.push(prop);
         });
 
-        keys = keys.filter((x) => x != "time");
-        const result = keys.map((k) => {
-          return { time: d.time, value: row[k], color: color(k) };
+        keys = keys.filter(x => x != 'time');
+        const result = keys.map(k => {
+          return {time: d.time, value: row[k], color: color(k)};
         });
         const tempTime = result[0];
-        result.unshift({ time: tempTime.time, value: tempTime.time });
+        result.unshift({time: tempTime.time, value: tempTime.time, color: "red"})
         console.log(result);
-        let tooltipX = d3.event.layerX;
+        let tooltipX =  d3.mouse(svg.node())[0];
         if (!interpolateCursor) {
           tooltipX = x(d.time);
         }
@@ -399,7 +376,7 @@ export default {
 
         tooltip
           .attr(
-            "transform",
+            'transform',
             `translate(${tooltipX + cursorToTooltipOffset}, ${tooltipY})`
           )
           .call(updateTooltipContents, result);
@@ -407,7 +384,7 @@ export default {
     },
 
     collectTime(data) {
-      const timeAllData = data.map((item) => item.time);
+      const timeAllData = data.map(item => item.time);
 
       const sizeCollection = Math.round(
         timeAllData.length / LINE_CHART_SIZE.X_AXIS_SIZE
@@ -430,7 +407,7 @@ export default {
     // gridlines in y axis function
     make_y_gridlines(y) {
       return d3.axisLeft(y).ticks(5);
-    },
+    }
   },
 
   watch: {
@@ -438,8 +415,8 @@ export default {
       if (val) {
         this.renderChart();
       }
-    },
-  },
+    }
+  }
 };
 </script>
 
