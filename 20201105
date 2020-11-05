@@ -1,0 +1,299 @@
+<template>
+  <div :id="barID"></div>
+</template>
+
+<script>
+import * as d3 from 'd3';
+import {
+  LINE_CHART_SIZE,
+  TIME_FORMAT,
+  STYLE_CHART
+} from '@/constants/chart/visual-chart-setting.js';
+
+export default {
+  name: 'VisualBarChart',
+  props: {
+    data: Array,
+    chartID: String
+  },
+
+  data() {
+    return {
+      barID: ''
+    };
+  },
+
+  created() {
+    this.barID = STYLE_CHART.BAR_ID + this.chartID;
+    console.log(this.barID);
+  },
+  mounted() {
+    this.renderChart();
+  },
+
+  data() {
+    return {
+      width: LINE_CHART_SIZE.WIDTH,
+      height: LINE_CHART_SIZE.HEIGHT
+    };
+  },
+
+  methods: {
+    renderChart() {
+      const data = this.data;
+      const margin = LINE_CHART_SIZE.MARGIN;
+      const width = this.width - margin.left - margin.right;
+      const height = this.height - margin.top - margin.bottom;
+
+      const timeDataDisplay = this.collectTime(data);
+      const formater = d3.format(LINE_CHART_SIZE.FORMAT_LONG_NUMBER);
+
+      // parse the date / time
+      // const parseTime = d3.timeParse('%Y-%m-%d %H:%M:%S.%L');
+
+      // set the ranges
+      const x0 = d3
+        .scaleBand()
+        .rangeRound([0, width - 100])
+        .paddingInner(0.1);
+      const x1 = d3.scaleBand().padding(0.05);
+      const y = d3.scaleLinear().rangeRound([height, 0]);
+      const z = d3.scaleOrdinal(d3.schemeCategory10);
+
+      // add the SVG element
+      const svg = d3
+        .select('#' + this.barID)
+        .append('svg')
+        .attr('viewBox', `0 0 1366 220`)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+      // load the data:
+      const keys = [];
+      let count = 0;
+      data.forEach(d => {
+        d.time = d.time;
+        if (count < 1) count++;
+        for (const prop in d) {
+          if (d.hasOwnProperty(prop)) {
+            if (prop != 'time' && keys.indexOf(prop) === -1) {
+              if (count == 1) {
+                keys.push(prop);
+              }
+              d[prop] = +d[prop];
+            }
+          }
+        }
+      });
+
+      // scale the range of the data
+      x0.domain(
+        data.map(function(d) {
+          return d.time;
+        })
+      );
+      x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+      const yMax = d3.max(data, function(d) {
+        return d3.max(keys, function(key) {
+          return d[key];
+        });
+      });
+      console.log(yMax, 'herere');
+      const yMin = d3.min(data, function(d) {
+        return d3.min(keys, function(key) {
+          return d[key];
+        });
+      });
+      // const y0 = Math.max(Math.abs(yMin), Math.abs(yMax));
+      y.domain([yMin, yMax]).nice();
+
+      // add axis
+      svg
+        .append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + height + ')')
+        .call(
+          d3
+            .axisBottom(x0)
+            .tickValues(timeDataDisplay)
+            .tickFormat(d3.timeFormat(TIME_FORMAT.MILLISECONDS))
+        )
+        //  .call(d3.axisBottom(x0))
+        .selectAll('#' + this.barID + ' text')
+        .style('text-anchor', 'begin')
+        .attr('y', 20)
+        .attr('dx', '8em')
+        .attr('dy', '-.55em');
+      //    .attr("transform", "rotate(-90)" );
+
+      svg
+        .append('g')
+        .attr('class', 'y axis')
+        .call(d3.axisLeft(y).tickFormat(formater))
+        .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 15)
+        .attr('dy', '.71em')
+        .style('text-anchor', 'end')
+        .text('Date');
+
+      // Add bar chart
+      svg
+        .append('g')
+        .attr('class', 'group-bar')
+        .selectAll('#' + this.barID + ' group-bar')
+        .data(data)
+        .enter()
+        .append('g')
+        .attr('class', 'bar')
+        .attr('transform', d => {
+          return 'translate(' + x0(d.time) + ',0)';
+        })
+        .selectAll('#' + this.barID + ' rect')
+        .data(d => {
+          return keys.map(function(key) {
+            return {key: key, value: d[key]};
+          });
+        })
+        .enter()
+        .append('rect')
+        .attr('class', function(d) {
+          return d.value < 0 ? 'negative' : 'positive';
+        })
+        .attr('x', function(d) {
+          return x1(d.key);
+        })
+        .attr('width', x1.bandwidth())
+        .attr('y', function(d) {
+          return y(Math.max(0, d.value));
+        })
+        .attr('height', function(d) {
+          return Math.abs(y(d.value) - y(0));
+        })
+        .attr('fill', function(d) {
+          return z(d.key);
+        });
+
+      const tooltip = svg
+        .append('g')
+        .attr('class', 'tooltip tooltip-component-bar');
+
+      tooltip
+        .append('rect')
+        .attr('class', 'tooltip-component')
+        .attr('pointer-events', 'none')
+        .attr('height', LINE_CHART_SIZE.TOOLTIP_RECT_HEIGHT)
+        .attr('width', LINE_CHART_SIZE.TOOLTIP_RECT_WIDTH)
+        .attr('visibility', 'hidden')
+        .attr('fill', 'white')
+        .attr('stroke', 'black')
+        .attr('stroke-width', 1);
+
+      const rows = d3.selectAll('#' + this.barID + ' .tooltip-component');
+
+      const groupColumn = svg.selectAll('#' + this.barID + ' .bar');
+      rows
+        .append('text')
+        .attr('class', 'data-tooltip')
+        .text('maimai');
+      groupColumn
+        .on('mousemove', d => {
+          rows.style('visibility', 'visible');
+          rows.attr('transform', 'translate(' + x0(d.time) + ',0)');
+
+          d3.selectAll('data-tooltip')
+            .attr('fill', 'black')
+            .attr('fill', 'black')
+            .attr('text-rendering', 'optimizeLegibility')
+            .text('aaaa');
+        })
+        .on('mouseout', d => {
+          d3.selectAll('#' + this.barID + ' .tooltip-component').style(
+            'visibility',
+            'hidden'
+          );
+        });
+      // append legend:
+      const legend = svg
+        .append('g')
+        .attr('font-family', 'sans-serif')
+        .attr('font-size', 15)
+        .attr('text-anchor', 'end')
+        .selectAll('g')
+        .data(keys.slice().reverse())
+        .enter()
+        .append('g')
+        .attr('transform', function(d, i) {
+          return 'translate( 0, ' + i * 20 + ')';
+        });
+      legend
+        .append('rect')
+        .attr('x', width - 70)
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', z)
+        .attr('stroke', z)
+        .attr('stroke-width', 2)
+        .on('click', function(d) {
+          update(d);
+        });
+      legend
+        .append('text')
+        .attr('x', width)
+        .attr('y', 7.5)
+        .attr('dy', '0.32em')
+        .text(function(d) {
+          return d;
+        });
+    },
+    collectTime(data) {
+      const timeAllData = data.map(item => item.time);
+
+      const sizeCollection = Math.round(
+        timeAllData.length / LINE_CHART_SIZE.X_AXIS_SIZE
+      );
+
+      const timeDataDisplay = [];
+
+      for (let timeItem = 0; timeItem < timeAllData.length; timeItem++) {
+        console.log(timeDataDisplay.length);
+        if (
+          timeItem % sizeCollection == 0 &&
+          timeDataDisplay.length < LINE_CHART_SIZE.X_AXIS_SIZE
+        ) {
+          timeDataDisplay.push(timeAllData[timeItem]);
+        }
+      }
+      return timeDataDisplay;
+    }
+  },
+  watch: {
+    data(val) {
+      if (val) {
+        this.renderChart();
+      }
+    }
+  }
+};
+</script>
+
+<style scoped>
+.line {
+  fill: none;
+  stroke: red;
+  stroke-width: 2px;
+}
+
+.area {
+  fill: red;
+}
+
+.tooltip {
+  color: rgb(37, 194, 37);
+  font-family: Arial, Helvetica, sans-serif;
+  background: black;
+  padding: 10px;
+  border: 3px solid white;
+  box-shadow: 0 0px 10px black;
+}
+</style>
