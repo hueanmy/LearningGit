@@ -1,0 +1,535 @@
+<template>
+  <div :id="svgID"></div>
+</template>
+
+<script>
+import * as d3 from 'd3';
+import {
+  LINE_CHART_SIZE,
+  CHART_TYPE,
+  TIME_FORMAT
+} from '@/constants/chart/visual-chart-setting.js';
+
+export default {
+  name: 'VisualLineChart',
+  props: {
+    data: Array,
+    chartID: String,
+    startTime: String,
+    endTime: String,
+    isAddChart: Boolean,
+    isChangeSingleTimeRange: Boolean
+  },
+
+  mounted() {
+    if (this.data) {
+      this.renderChart();
+    }
+  },
+  data() {
+    return {
+      width: LINE_CHART_SIZE.WIDTH,
+      height: LINE_CHART_SIZE.HEIGHT,
+      valueLine: [],
+      svgID: ''
+    };
+  },
+  created() {
+    this.svgID = CHART_TYPE.LINE + '-' + this.chartID;
+  },
+  methods: {
+    renderChart() {
+      const data = this.data;
+
+      const margin = LINE_CHART_SIZE.MARGIN;
+
+      let svg = null;
+      if (this.isAddChart == true) {
+        svg = this.drawSVG(this.svgID, margin);
+      } else {
+        svg = d3.select('#' + this.svgID).select('svg');
+        if (svg._groups[0][0] instanceof Element) {
+          svg.selectAll('*').remove();
+          svg = svg
+            .append('g')
+            .attr(
+              'transform',
+              'translate(' + margin.left + ',' + margin.top + ')'
+            );
+        } else {
+          svg = this.drawSVG(this.svgID, margin);
+        }
+      }
+      const timeDataDisplay = this.collectTime(data);
+      const width = this.width - margin.left - margin.right;
+      const height = this.height - margin.top - margin.bottom;
+
+      // set the ranges
+      const x = d3.scaleTime().range([0, width]);
+      const y = d3.scaleLinear().range([height, 0]);
+      const formater = d3.format(LINE_CHART_SIZE.FORMAT_LONG_NUMBER);
+
+      const timeFormat = d3.timeFormat(
+        this.formatTimeXAxis(this.startTime, this.endTime)
+      );
+
+      const formatFullTime = d3.timeFormat(TIME_FORMAT.MILLISECONDS);
+
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+      color.domain(
+        d3.keys(data[0]).filter(key => {
+          return key !== 'time';
+        })
+      );
+
+      const timeseries = color.domain().map(name => {
+        return {
+          name: name,
+          values: data.map(d => {
+            return {time: d.time, values: +d[name]};
+          })
+        };
+      });
+
+      const keyColor = timeseries.map(item => item.name);
+
+      const xAxis = this.renderXAxis(x, timeDataDisplay, timeFormat);
+      const yAxis = d3
+        .axisLeft()
+        .scale(y)
+        .tickFormat(formater);
+
+      const line = d3
+        .line()
+        .x(d => {
+          return x(d.time);
+        })
+        .y(d => {
+          return y(d.values);
+        });
+
+      x.domain(
+        d3.extent(data, d => {
+          return d.time;
+        })
+      );
+
+      let yMin = d3.min(timeseries, c => {
+        return d3.min(c.values, v => {
+          return v.values;
+        });
+      });
+
+      let yMax = d3.max(timeseries, c => {
+        return d3.max(c.values, v => {
+          return v.values;
+        });
+      });
+
+      if (yMin == yMax) {
+        yMin < 0 ? (yMax = 0) : (yMin = 0);
+      }
+
+      if (yMin > 0) yMin = 0;
+      if (yMax < 0) yMax = 0;
+
+      y.domain([yMin, yMax]).nice();
+
+      this.appendGXAxis(svg, xAxis, height, width);
+
+      this.appendGYAxis(svg, yAxis);
+
+      const col = svg
+        .selectAll('#' + this.svgID + ' .col')
+        .data(timeseries)
+        .enter()
+        .append('g')
+        .attr('class', 'col')
+        .attr('id', d => {
+          return d.name.replace(' ', '');
+        });
+
+      col
+        .append('path')
+        .attr('class', 'line')
+        .attr('d', d => {
+          return line(d.values);
+        })
+        .style('stroke', d => {
+          return color(d.name);
+        });
+
+      // add the Y gridlines
+      this.addYGridLine(svg, width, y);
+      const size = LINE_CHART_SIZE.LEGEND_RECT;
+
+      // Add dot legends
+      svg
+        .selectAll('#' + this.svgID + ' mydots')
+        .data(keyColor)
+        .enter()
+        .append('rect')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND)
+        .attr('y', (d, i) => {
+          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5);
+        }) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr('width', size)
+        .attr('height', size)
+        .style('fill', d => {
+          return color(d);
+        });
+
+      // Add one dot in the legend for each name.
+      svg
+        .selectAll('#' + this.svgID + ' mylabels')
+        .data(keyColor)
+        .enter()
+        .append('text')
+        .attr('class', 'position')
+        .attr('x', width + LINE_CHART_SIZE.X_LEGEND + size * 1.5)
+        .attr('y', (d, i) => {
+          return LINE_CHART_SIZE.Y_LEGEND + i * (size + 5) + size / 2;
+        }) // 100 is where the first dot appears. 25 is the distance between dots
+        .style('fill', d => {
+          return color(d);
+        })
+        .text(function(key) {
+          return key.length > 30 ? key.substring(0, 30) + '...' : key;
+        })
+        .attr('text-anchor', 'left')
+        .style('alignment-baseline', 'middle');
+
+      // Add Mouse Over
+      const mouseG = this.addMoveOver(svg);
+
+      // Add the black vertical line to follow mouse
+      this.appendPathToMouseG(mouseG);
+
+      const interpolateCursor = true;
+
+      // append a rect to catch mouse movements on svg
+      this.mouseMoveInRect(mouseG, svg, width, height, this.svgID);
+
+      const cursorToTooltipOffset = 5;
+      const updateTooltipContents = (tooltip, tooltipValues) => {
+        if (!tooltipValues) return tooltip.attr('visibility', 'hidden');
+
+        const rows = tooltip
+          .selectAll('#' + this.svgID + ' .tooltip-row')
+          .attr('id', 'rows-element')
+          .data(tooltipValues, d => d.value + d.color + d.name);
+
+        const row = rows
+          .enter()
+          .append('g')
+          .attr('class', 'tooltip-row')
+          .attr('transform', (d, i) => `translate(5, ${i * 20 + 5})`);
+        rows.exit().remove();
+
+        const colorSquareSize = LINE_CHART_SIZE.COLOR_SQUARE_SIZE;
+        const textMargin = LINE_CHART_SIZE.TEXT_MARGIN;
+
+        row
+          .append('text')
+          .attr('id', 'tooltip-content')
+          .attr('class', 'position')
+          .style('fill', d => {
+            return d.color;
+          })
+          .attr('transform', `translate(${colorSquareSize + textMargin}, 0)`)
+          .attr('fill', 'black')
+          .text(d => {
+            if (d.name != undefined) {
+              return d.name.length > 30
+                ? d.name.substring(0, 30) + '...'
+                : d.name;
+            }
+          })
+          .attr('dominant-baseline', 'hanging')
+          .attr('text-rendering', 'optimizeLegibility')
+          .attr('stroke', 'none')
+          .append('tspan')
+          .text(d => {
+            if (d.color != undefined) {
+              return ':';
+            }
+          })
+          .append('tspan')
+          .text('  ')
+          .append('tspan')
+          .attr('fill', 'black')
+          .attr('font-size', '11')
+          .text(d => d.value);
+
+        const heightTooltip =
+          document.getElementById('tooltip-content').getBoundingClientRect()
+            .height *
+          (rows._groups[0].length + 4);
+
+        const arrayWidth = [];
+
+        document
+          .getElementById(this.svgID)
+          .getElementsByClassName('tooltip-row')
+          .forEach(elementWidth => {
+            arrayWidth.push(elementWidth.getBoundingClientRect().width);
+          });
+
+        const widthTooltip = Math.max(...arrayWidth);
+
+        tooltip
+          .select('rect')
+          .attr('width', widthTooltip + LINE_CHART_SIZE.SIZE_RIGHT)
+          .attr('height', heightTooltip)
+          .attr('fill', 'white')
+          .attr('stroke', 'black')
+          .attr('stroke-width', 1);
+
+        const markers = mouseG
+          .selectAll('#' + this.svgID + ' .cursor-data-marker')
+          .data(tooltipValues, d => d.value + d.color);
+        markers.exit().remove();
+        markers
+          .enter()
+          .append('circle')
+          .attr('class', 'cursor-data-marker tooltip-component')
+          .attr('pointer-events', 'none')
+          .attr('r', 3)
+          .attr('cx', d => {
+            return x(d.time);
+          })
+          .attr('cy', d => {
+            return y(d.value);
+          })
+          .attr('fill', d => d.color);
+      };
+
+      const plotArea = d3.select('#' + this.svgID + ' .mouse-over-effects');
+
+      // Create the tooltip
+      const tooltip = this.createTooltip(svg);
+
+      // Append rect to tooltip
+      this.appendRectToTooltip(tooltip);
+
+      const bs = d3.bisector(d => {
+        return d.time;
+      });
+      const bisectDate = bs.left;
+      svg.on('mousemove', () => {
+        const x0 = x.invert(d3.mouse(svg.node())[0]);
+        const i = bisectDate(data, x0, 1);
+        const d0 = data[i - 1];
+        const d1 = data[i];
+        let d = undefined;
+        let row = undefined;
+        if (d1 != undefined && x0 - d0.time > d1.time - x0) {
+          d = d1;
+          row = data[i];
+        } else {
+          d = d0;
+          row = data[i - 1];
+        }
+        let keys = [];
+        Object.keys(row).forEach(prop => {
+          keys.push(prop);
+        });
+
+        keys = keys.filter(x => x != 'time');
+        let result = keys.map(k => {
+          return {time: d.time, value: row[k], color: color(k), name: k};
+        });
+
+        result = _.orderBy(result, 'value', 'desc');
+
+        const tempTime = result[0];
+
+        result.unshift({
+          time: timeFormat(tempTime.time),
+          value: formatFullTime(tempTime.time)
+        });
+        const tooltipX = d3.mouse(svg.node())[0];
+        if (!interpolateCursor) {
+          tooltipX = x(d.time);
+        }
+        const verticalPositionPercent = 0.0;
+        const tooltipY =
+          plotArea.node().getBBox().height * verticalPositionPercent;
+
+        tooltip
+          .attr(
+            'transform',
+            `translate(${tooltipX + cursorToTooltipOffset}, ${tooltipY})`
+          )
+          .call(updateTooltipContents, result);
+      });
+    },
+
+    drawSVG(svgID, margin) {
+      const svg = d3
+        .select('#' + this.svgID)
+        .append('svg')
+        .attr('preserveAspectRatio', 'xMinYMin meet')
+        .attr('viewBox', LINE_CHART_SIZE.VIEW_BOX)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+      return svg;
+    },
+
+    createTooltip(svg) {
+      return svg
+        .append('g')
+        .attr('class', 'tooltip tooltip-component')
+        .attr('id', 'tooltip-id');
+    },
+
+    appendRectToTooltip(tooltip, heightTooltip, widthTooltip) {
+      tooltip
+        .append('rect')
+        .attr('class', 'tooltip-component')
+        .attr('pointer-events', 'none')
+        .attr('visibility', 'hidden')
+        .attr('fill', 'white')
+        .attr('stroke', 'black')
+        .attr('stroke-width', 1);
+    },
+
+    mouseMoveInRect(mouseG, svg, width, height, svgID) {
+      return mouseG
+        .append('svg:rect') // append a rect to catch mouse movements on svg
+        .attr('width', width) // can't catch mouse events on a g element
+        .attr('height', height)
+        .attr('fill', 'none')
+        .attr('pointer-events', 'all')
+        .on('mouseout', () => {
+          // on mouse out hide line, circles and text
+          d3.select('#' + svgID + ' .mouse-line').style('opacity', '0');
+          d3.selectAll('#' + svgID + ' .mouse-per-line circle').style(
+            'opacity',
+            '0'
+          );
+          d3.selectAll('#' + svgID + ' .mouse-per-line text').style(
+            'opacity',
+            '0'
+          );
+          d3.selectAll('#' + svgID + ' .tooltip-component').style(
+            'visibility',
+            'hidden'
+          );
+        })
+        .on('mouseover', () => {
+          // on mouse in show line, circles and text
+          d3.select('#' + svgID + ' .mouse-line').style('opacity', '1');
+          d3.selectAll('#' + svgID + ' .mouse-per-line circle').style(
+            'opacity',
+            '1'
+          );
+          d3.selectAll('#' + svgID + ' .mouse-per-line text').style(
+            'opacity',
+            '1'
+          );
+          d3.selectAll('#' + svgID + ' .tooltip-component').style(
+            'visibility',
+            'visible'
+          );
+        })
+        .on('mousemove', () => {
+          // mouse moving over canvas
+          d3.select('#' + svgID + ' .mouse-line').attr('d', function() {
+            const cursorX = d3.mouse(svg.node())[0];
+            let d = 'M' + cursorX + ',' + height;
+            d += ' ' + cursorX + ',' + 0;
+            return d;
+          });
+        });
+    },
+
+    appendPathToMouseG(mouseG) {
+      return mouseG
+        .append('path') // this is the black vertical line to follow mouse
+        .attr('class', 'mouse-line')
+        .style('stroke', 'rgb(199, 195, 195)')
+        .style('stroke-width', '0.5px')
+        .style('opacity', '0');
+    },
+
+    renderXAxis(x, timeDataDisplay, timeFormat) {
+      return d3
+        .axisBottom()
+        .scale(x)
+        .tickValues(timeDataDisplay)
+        .tickFormat(timeFormat);
+    },
+
+    collectTime(data) {
+      const timeAllData = data.map(item => item.time);
+
+      let sizeCollection = timeAllData.length / LINE_CHART_SIZE.X_AXIS_SIZE;
+      if (sizeCollection < 1) {
+        sizeCollection = Math.ceil(sizeCollection);
+      } else {
+        sizeCollection = Math.round(sizeCollection);
+      }
+
+      const timeDataDisplay = [];
+
+      for (let timeItem = 0; timeItem < timeAllData.length; timeItem++) {
+        if (
+          timeItem % sizeCollection == 0 &&
+          timeDataDisplay.length < LINE_CHART_SIZE.X_AXIS_SIZE
+        ) {
+          timeDataDisplay.push(timeAllData[timeItem]);
+        }
+      }
+      return timeDataDisplay;
+    },
+
+    addMoveOver(svg) {
+      return svg.append('g').attr('class', 'mouse-over-effects');
+    },
+
+    appendGXAxis(svg, xAxis, height, width) {
+      return svg
+        .append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(60,' + height + ')')
+        .call(xAxis);
+    },
+
+    appendGYAxis(svg, yAxis) {
+      return svg
+        .append('g')
+        .attr('class', 'y axis')
+        .call(yAxis);
+    },
+
+    addYGridLine(svg, width, y) {
+      svg
+        .append('g')
+        .attr('class', 'grid')
+        .call(
+          this.make_y_gridlines(y)
+            .tickSize(-width)
+            .tickFormat('')
+        );
+    },
+
+    // gridlines in y axis function
+    make_y_gridlines(y) {
+      return d3.axisLeft(y).ticks(5);
+    }
+  },
+
+  watch: {
+    data(val) {
+      if (val) {
+        this.renderChart();
+      }
+    }
+  }
+};
+</script>
+
+<style scoped></style>
