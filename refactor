@@ -1,0 +1,385 @@
+<template>
+  <svg
+    id="line"
+    viewBox="0 0 1366 300"
+    preserveAspectRatio="xMidYMid meet"
+    ref="chartContainer"
+  >
+    <g id="lineChart" transform="translate(30,40)">
+      <g
+        ref="xaxis"
+        class="x axis"
+        transform="translate(60, 240)"
+        font-size="10"
+        font-family="sans-serif"
+        text-anchor="end"
+      ></g>
+      <g ref="yaxis" class="y axis"></g>
+      <svg id="line2" @mousemove="mouseMoveInSvg()">
+        <g
+          class="col"
+          v-for="(lineItem, index) in timeseries"
+          :key="'line' + index"
+          :id="lineItem.name"
+        >
+          <path
+            class="line"
+            :style="{stroke: color(lineItem.name)}"
+            :d="line(lineItem.values)"
+          ></path>
+        </g>
+        <g
+          class="grid"
+          v-for="(line, index) in 7"
+          :key="index"
+          fill="none"
+          font-size="10"
+          text-anchor="end"
+        >
+          <path class="domain" stroke="blue"></path>
+          <g
+            class="tick"
+            opacity="1"
+            :transform="`translate(0, ${200 - index * 40})`"
+          >
+            <line stroke="black" x2="1140"></line>
+          </g>
+        </g>
+        <g class="mouse-over-effects">
+          <path
+            class="mouse-line"
+            :d="d"
+            style="stroke: rgb(199, 195, 195); stroke-width: 0.5px; opacity: 1;"
+          ></path>
+          <rect
+            width="1140"
+            height="250"
+            pointer-events="all"
+            fill="none"
+            id="mouse-path"
+            @mousemove="pathMouseMove($event)"
+            @mouseout="pathMouseOut()"
+            @mouseover="pathMouseOver()"
+          ></rect>
+          <circle
+            class="cursor-data-marker tooltip-component"
+            pointer-events="none"
+            r="3"
+            fill="#ff7f0e"
+            cy="40.00000000000001"
+            cx="0"
+          ></circle>
+        </g>
+        <g class="tooltip tooltip-component" id="tooltip-id">
+          <rect
+            class="tooltip-component"
+            pointer-events="none"
+            fill="white"
+            stroke="black"
+            stroke-width="1"
+            width="156.60696411132812"
+            height="135.2098388671875"
+          ></rect>
+          <g
+            class="tooltip-row"
+            v-for="(row, index) in 4"
+            :key="index"
+            transform="translate(5, 5)"
+            :id="'row' + index"
+          >
+            <text
+              id="tooltip-content"
+              class="position"
+              :transform="`translate(12, ${5 + 20 * index})`"
+              fill="black"
+              dominant-baseline="hanging"
+              text-rendering="optimizeLegibility"
+              stroke="none"
+              style="fill: rgb(255, 127, 14);"
+            >
+              <tspan fill="black" font-size="11">
+                {{ 'value' + index }}
+              </tspan>
+            </text>
+          </g>
+        </g>
+      </svg>
+    </g>
+  </svg>
+</template>
+
+<script>
+import * as d3 from 'd3';
+import {
+  LINE_CHART_SIZE,
+  // CHART_TYPE,
+  TIME_FORMAT
+} from '@/constants/chart/visual-chart-setting.js';
+
+export default {
+  name: 'VisualLineChart',
+  props: {
+    data: Array,
+    // chartID: String,
+    startTime: String,
+    endTime: String
+    // ,
+    // isAddChart: Boolean,
+    // isChangeSingleTimeRange: Boolean
+  },
+
+  mounted() {
+    if (this.data) {
+      this.drawChart();
+    }
+  },
+  data() {
+    return {
+      chartWidth: LINE_CHART_SIZE.WIDTH,
+      chartHeight: LINE_CHART_SIZE.HEIGHT,
+      timeseries: null,
+      line: null,
+      color: null,
+      d: null
+      // valueLine: [],
+      // svgID: '',
+      // marginLeft: LINE_CHART_SIZE.MARGIN.left,
+      // marginTop: LINE_CHART_SIZE.MARGIN.top
+    };
+  },
+  created() {
+    // this.svgID = CHART_TYPE.LINE + '-' + this.chartID;
+    // window.addEventListener('resize', this.handleResizeScreen);
+  },
+
+  methods: {
+    drawChart() {
+      // pass data to line chart
+      const data = this.data;
+
+      // define width, height, style for line chart
+
+      const margin = LINE_CHART_SIZE.MARGIN;
+
+      const timeDataDisplay = this.collectTime(data);
+      const width = this.chartWidth - margin.left - margin.right;
+      const height = this.chartHeight - margin.top - margin.bottom;
+
+      // set the ranges
+      const x = d3.scaleTime().range([0, width]);
+      const y = d3.scaleLinear().range([height, 0]);
+      const formater = d3.format(LINE_CHART_SIZE.FORMAT_LONG_NUMBER);
+
+      const timeFormat = d3.timeFormat(
+        this.formatTimeXAxis(this.startTime, this.endTime)
+      );
+
+      const formatFullTime = d3.timeFormat(TIME_FORMAT.MILLISECONDS);
+      console.log(formatFullTime);
+
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+      this.color = color;
+
+      color.domain(
+        d3.keys(data[0]).filter(key => {
+          return key !== 'time';
+        })
+      );
+
+      const timeseries = color.domain().map(name => {
+        return {
+          name: name,
+          values: data.map(d => {
+            return {time: d.time, values: +d[name]};
+          })
+        };
+      });
+
+      this.timeseries = timeseries;
+
+      const keyColor = timeseries.map(item => item.name);
+      console.log(keyColor);
+
+      const xAxis = this.renderXAxis(x, timeDataDisplay, timeFormat);
+
+      const yAxis = this.renderYAxis(y, formater);
+
+      const line = d3
+        .line()
+        .x(d => {
+          return x(d.time);
+        })
+        .y(d => {
+          return y(d.values);
+        });
+
+      this.line = line;
+
+      x.domain(
+        d3.extent(data, d => {
+          return d.time;
+        })
+      );
+
+      let yMin = d3.min(timeseries, c => {
+        return d3.min(c.values, v => {
+          return v.values;
+        });
+      });
+
+      let yMax = d3.max(timeseries, c => {
+        return d3.max(c.values, v => {
+          return v.values;
+        });
+      });
+
+      if (yMin == yMax) {
+        yMin < 0 ? (yMax = 0) : (yMin = 0);
+      }
+
+      if (yMin > 0) yMin = 0;
+      if (yMax < 0) yMax = 0;
+
+      y.domain([yMin, yMax]).nice();
+
+      // draw x axis for line chart
+      this.drawXAxis(xAxis);
+
+      // draw y axis for line chart
+      this.drawYAxis(yAxis);
+    },
+
+    drawXAxis(x) {
+      const xAxis = this.$refs.xaxis;
+      d3.select(xAxis).call(x);
+    },
+
+    renderXAxis(x, timeDataDisplay, timeFormat) {
+      return d3
+        .axisBottom()
+        .scale(x)
+        .tickValues(timeDataDisplay)
+        .tickFormat(timeFormat);
+    },
+
+    drawYAxis(y) {
+      const yAxis = this.$refs.yaxis;
+      d3.select(yAxis).call(y);
+    },
+
+    renderYAxis(y, formater) {
+      return d3
+        .axisLeft()
+        .scale(y)
+        .tickFormat(formater);
+    },
+
+    pathMouseMove(event) {
+      const cursorX = event.layerX - 60;
+      // console.log(event.clientX);
+      let d = 'M' + cursorX + ',' + 300;
+      d += ' ' + cursorX + ',' + 0;
+      this.d = d;
+    },
+
+    tooltipMouseMove(event) {
+      
+    },
+
+    pathMouseOver() {},
+
+    pathMouseOut() {},
+
+    mouseMoveInSvg() {
+      const data = this.data;
+      const tooltip = d3.select('tooltip-id');
+      const x0 = x.invert(d3.mouse(svg.node())[0]);
+      const i = bisectDate(data, x0, 1);
+      const d0 = data[i - 1];
+      const d1 = data[i];
+      let d = undefined;
+      let row = undefined;
+      if (d1 != undefined && x0 - d0.time > d1.time - x0) {
+        d = d1;
+        row = data[i];
+      } else {
+        d = d0;
+        row = data[i - 1];
+      }
+      let keys = [];
+      Object.keys(row).forEach(prop => {
+        keys.push(prop);
+      });
+
+      keys = keys.filter(x => x != 'time');
+      let result = keys.map(k => {
+        return {time: d.time, value: row[k], color: color(k), name: k};
+      });
+
+      result = _.orderBy(result, 'value', 'desc');
+
+      const tempTime = result[0];
+
+      result.unshift({
+        time: timeFormat(tempTime.time),
+        value: formatFullTime(tempTime.time)
+      });
+      const tooltipX = d3.mouse(svg.node())[0];
+      if (!interpolateCursor) {
+        tooltipX = x(d.time);
+      }
+      const verticalPositionPercent = 0.0;
+      const tooltipY =
+        plotArea.node().getBBox().height * verticalPositionPercent;
+
+      return tooltip
+        .attr(
+          'transform',
+          `translate(${tooltipX + cursorToTooltipOffset}, ${tooltipY})`
+        )
+        .call(updateTooltipContents, result);
+    },
+
+    updateTooltipContent(tooltip, tooltipValues) {},
+
+    makeGridLine() {},
+
+    makeLegend() {},
+
+    makeTooltip() {},
+
+    collectTime(data) {
+      const timeAllData = data.map(item => item.time);
+
+      let sizeCollection = timeAllData.length / LINE_CHART_SIZE.X_AXIS_SIZE;
+      if (sizeCollection < 1) {
+        sizeCollection = Math.ceil(sizeCollection);
+      } else {
+        sizeCollection = Math.round(sizeCollection);
+      }
+
+      const timeDataDisplay = [];
+
+      for (let timeItem = 0; timeItem < timeAllData.length; timeItem++) {
+        if (
+          timeItem % sizeCollection == 0 &&
+          timeDataDisplay.length < LINE_CHART_SIZE.X_AXIS_SIZE
+        ) {
+          timeDataDisplay.push(timeAllData[timeItem]);
+        }
+      }
+      return timeDataDisplay;
+    }
+  },
+
+  watch: {
+    data(val) {
+      if (val) {
+        this.drawChart();
+      }
+    }
+  }
+};
+</script>
+
+<style scoped></style>
